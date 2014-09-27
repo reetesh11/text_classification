@@ -2,8 +2,6 @@ import os, re
 import json
 import string
 from numpy import *
-from sklearn.feature_extraction import DictVectorizer
-from sklearn.feature_extraction.text import CountVectorizer
 
 class_names = ["job", "freelancer", "intern", "discussion"]
 number_of_classes = len(class_names)
@@ -112,103 +110,6 @@ class ReadPost(object):
         return dictionary
 
 
-class PostClass(ReadPost):
-
-    def __init__(self, dictionary):
-        ReadPost.__init__(self, dictionary)
-        self._number_of_posts = 0
-
-    def probability(self, word):
-        #Returns the probability of the word "word" given the class "self"
-        dict_len = ReadPost._dictionary.length()
-        sum_den = 0
-        for i in range(dict_len):
-            sum_den = PostClass._dictionary.word_freq(word)
-        num = self._word_list.word_freq(word)
-        num += 1
-        den = dict_len + sum_den
-
-        return num/den
-
-    def __add__(self, other):
-        # overloading of "+" operator
-        temp = PostClass(self._dictionary)
-        temp._word_list = self._word_list + other._word_list
-        return temp
-
-    def set_number_of_post(self, number):
-        self._number_of_posts = number
-
-    def number_of_docs(self):
-        return self._number_of_posts
-
-
-class Classifier(object):
-    def __init__(self):
-        self._post_classes = {}
-        self._dictionary = WordList()
-
-    def sum_words_in_class(self, jth_class):
-        #Number of times all different words af a jth_class appear in a class
-        sum = 0
-        for word in self._dictionary.words_with_freq():
-            waf = self._post_classes[jth_class].word_and_freq()
-            if word in waf:
-                sum += waf[word]
-        return sum
-
-    def learn(self, directory, jth_class):
-
-        x = PostClass(self._dictionary)
-        direc = os.listdir(directory)
-        for files in direc:
-            d = PostClass(self._dictionary)
-            print(directory + "/" + files)
-            d.read_post(directory + "/" + files, training=True)
-            x += d
-            self._post_classes[jth_class] = x
-            x.set_number_of_post(len(direc))
-
-    def probability(self, post, jth_class=""):
-        #calculates the probability for a class jth_class given a post "post"
-        if jth_class:
-            sum_jth_class = self.sum_words_in_class(jth_class)
-            prob = 0
-            d = PostClass(self._dictionary)
-            d.read_post(post, training=True)
-            for j in self._post_classes:
-                sum_j = self.sum_words_in_class(j)
-                prod = 1
-                for i in d.words():
-                    wf_jth_class = 1 + self._post_classes[j].word_freq(i)
-                    r = wf * sum_jth_class / (wf_jth_class * sum_j)
-                    prod *= r
-                prob += prod * self._post_classes[j].number_of_documents()/self._post_classes[jth_class].number_of_documents()
-
-            if prob != 0:
-                return 1 / prob
-            else:
-                return -1
-        else:
-            prob_list = []
-            for jth_class in self._post_classes:
-                prob = self.probability(post, jth_class)
-                prob_list.append([jth_class, prob])
-            prob_list.sort(key=lambda x: x[1], reverse=True)
-            return prob_list
-
-    def document_intersection_with_classes(self, post_name):
-        res = [post_name]
-        for dc in self._post_classes:
-            d = PostClass(self._dictionary)
-            d.read_post(post_name)
-            o = self._post_classes[dc] & d
-            intersection_ratio = len(o) / len(d.word())
-
-            res += (dc, intersection_ratio)
-        return res
-
-
 class ReadFile(ReadPost):
     """ Read the JSON file and convert it into list of words
     """
@@ -267,7 +168,6 @@ class ReadFile(ReadPost):
         post_vs_words = zeros((length_of_dict, self.number_of_posts))
         class_vs_words = zeros((length_of_dict, number_of_classes))
 
-        index = 0
         for (key, words) in self.word_list_per_post.items():
             for word, freq in words.items():
                 post_vs_words[bag_of_words.keys().index(word), key-1] = freq
